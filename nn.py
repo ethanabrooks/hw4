@@ -35,9 +35,11 @@ def feed_forward_once(inputs, theta):
 def init_thetas(epsilon, layers, d, num_classes, rand=True):
     size = layers, (d + 1) * d
     if rand:
-        return random.uniform(-epsilon, epsilon, size=size)
+        thetas = random.uniform(-epsilon, epsilon, size=size)
     else:
-        return ones(size)
+        thetas = ones(size)
+    thetas[-1].reshape(d + 1, d)[:, num_classes:] = None
+    return thetas
 
 
 def feed_forward(input, thetas, K=None):
@@ -47,7 +49,7 @@ def feed_forward(input, thetas, K=None):
     for l, theta in enumerate(thetas):
         activations[l, 1:] = input
         assert activations[l, 0] == 1
-        if l+1 == thetas.shape[0]:
+        if l + 1 == thetas.shape[0]:
             d = K  # on the final layer, we shorten the width of theta
         input = feed_forward_once(activations[l, :], reshape(theta, d))
     return activations, input  # = output
@@ -65,7 +67,7 @@ def feed_forward_multiple_inputs(inputs, thetas, K=None):
     d = None
     for l, theta in enumerate(thetas):
         activations[:, 1:] = inputs
-        if l+1 == thetas.shape[0]:
+        if l + 1 == thetas.shape[0]:
             d = K  # on the final layer, we shorten the width of theta
         inputs = feed_forward_once(activations, reshape(theta, d))
     return inputs  # = outputs
@@ -79,7 +81,7 @@ def get_error(output, classes, y_i):
 
 def reshape(theta, d=None):
     d1 = floor(sqrt(theta.size)) + 1
-    theta_ = theta if d is None else theta[:d*d1]
+    theta_ = theta if d is None else theta[:d * d1]
     return theta_.reshape(d1, theta_.size / d1)
 
 
@@ -99,14 +101,13 @@ class NeuralNet:
         self.numEpochs = numEpochs
         self.gradientChecking = gradientChecking
         self.randTheta = randTheta
-        self.reg_factor = .00001
+        self.reg_factor = 0  # .000001
 
     def get_gradients(self, X, y):
         gradients = zeros(self.thetas.shape)
         for i, instance in enumerate(X):
             activations, output = feed_forward(instance,
-                                               self.thetas,
-                                               self.classes.size)
+                                               self.thetas)
             g_prime = get_g_prime(activations)
             error = get_error(output, self.classes, y[i])
             deltas = get_deltas(g_prime, self.thetas, error)
@@ -135,9 +136,10 @@ class NeuralNet:
         def cost(i, j):
             perturbed_thetas = thetas.copy()
             perturbed_thetas[i, j] += c
-            predictions = feed_forward_multiple_inputs(X, perturbed_thetas,
-                                                       self.classes.size)
-            return get_cost(X, y_bin, predictions, reg_factor, perturbed_thetas)
+            predictions = feed_forward_multiple_inputs(X, perturbed_thetas)
+            return get_cost(
+                X, y_bin, predictions[:, :self.classes.size], reg_factor, perturbed_thetas
+            )
 
         reg_factor = self.reg_factor
         return fromfunction(vectorize(cost), thetas.shape)

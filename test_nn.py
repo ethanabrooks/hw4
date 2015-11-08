@@ -339,11 +339,12 @@ def test_get_grad_approx():
 
 def test_check_gradient():
     net = NeuralNet(1, gradientChecking=True, randTheta=False)
+
     X = matrix([
-        [1],
-        [1]
+        [1, 1, 0],
+        [0, 0, 1]
     ])
-    y = array([1, 1])
+    y = array([1, 0])
     net.fit(X, y)
 
     X = matrix([
@@ -352,3 +353,5 @@ def test_check_gradient():
     ])
     y = array([0, 1])
     net.fit(X, y)
+
+
