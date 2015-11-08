@@ -54,7 +54,9 @@ def feed_forward(input, thetas, K=None):
         if l + 1 == thetas.shape[0]:
             d = K  # on the final layer, we shorten the width of theta
         theta_ = reshape(theta, d)
+        theta_compare = reshape(theta)
         input = feed_forward_once(activations[l, :], theta_)
+        input_compare = feed_forward_once(activations[l, :], theta_compare)
     return activations, input  # = output
 
 
@@ -72,7 +74,10 @@ def feed_forward_multiple_inputs(inputs, thetas, K=None):
         activations[:, 1:] = inputs
         if l + 1 == thetas.shape[0]:
             d = K  # on the final layer, we shorten the width of theta
-        inputs = feed_forward_once(activations, reshape(theta, d))
+        theta_ = reshape(theta, d)
+        theta_compare = reshape(theta)
+        inputs = feed_forward_once(activations, theta_)
+        input_compare = feed_forward_once(activations[l, :], theta_compare)
     return inputs  # = outputs
 
 
@@ -84,8 +89,8 @@ def get_error(output, classes, y_i):
 
 def reshape(theta, d=None):
     d1 = floor(sqrt(theta.size)) + 1
-    theta_ = theta if d is None else theta[:d * d1]
-    return theta_.reshape(d1, -1)
+    theta_ = theta.reshape(d1, -1)
+    return theta_ if d is None else theta_[:, :d]
 
 
 class NeuralNet:
@@ -104,7 +109,7 @@ class NeuralNet:
         self.numEpochs = numEpochs
         self.gradientChecking = gradientChecking
         self.randTheta = randTheta
-        self.reg_factor = 0  # .000001
+        self.reg_factor = .0001
 
     def get_gradients(self, X, y):
         gradients = ma.zeros(self.thetas.shape)
@@ -112,6 +117,7 @@ class NeuralNet:
         for i, instance in enumerate(X):
             activations, output = feed_forward(instance,
                                                self.thetas)
+                                               # self.classes.size)
             g_prime = get_g_prime(activations)
             error = get_error(output, self.classes, y[i])
             deltas = get_deltas(g_prime, self.thetas, error)
@@ -132,7 +138,9 @@ class NeuralNet:
         def cost(i, j):
             perturbed_thetas = thetas.copy()
             perturbed_thetas[i, j] += c
-            predictions = feed_forward_multiple_inputs(X, perturbed_thetas)
+            predictions = feed_forward_multiple_inputs(X,
+                                                       perturbed_thetas)
+                                                       # self.classes.size)
             return get_cost(
                 X, y_bin, predictions[:, :self.classes.size], reg_factor, perturbed_thetas
             )

@@ -341,10 +341,10 @@ def test_check_gradient():
     net = NeuralNet(1, gradientChecking=True, randTheta=False)
 
     X = matrix([
-        [1, 1, 0],
-        [0, 0, 1]
+        [1, 1, 0, 0],
+        [0, 0, 1, 0]
     ])
-    y = array([1, 0])
+    y = array([0, 1])
     net.fit(X, y)
 
     X = matrix([
