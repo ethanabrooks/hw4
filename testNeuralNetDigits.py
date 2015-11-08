@@ -5,9 +5,9 @@ from nn import NeuralNet
 if __name__ == "__main__":
     # Load Data
     filename = 'data/digitsX.dat'
-    X = loadtxt(filename, delimiter=',')[:400]
+    X = loadtxt(filename, delimiter=',')[:4]
     filename = 'data/digitsY.dat'
-    y = loadtxt(filename)[:400]
+    y = loadtxt(filename)[:4]
     n = len(y)
     kf = KFold(n, n_folds=4)
 

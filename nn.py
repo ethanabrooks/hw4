@@ -97,7 +97,7 @@ class NeuralNet:
         self.numEpochs = numEpochs
         self.gradientChecking = gradientChecking
         self.randTheta = randTheta
-        self.reg_factor = 0  # TODO modify
+        self.reg_factor = .00001
 
     def get_gradients(self, X, y):
         gradients = self.thetas.copy()
@@ -262,7 +262,7 @@ def get_grad_approx(c, cost_minus, cost_plus):
     return (cost_plus - cost_minus) / (2. * c)
 
 
-def get_cost(X, y_bin, predictions, reg_factor, thetas):  # TODO implement
+def get_cost(X, y_bin, predictions, reg_factor, thetas):
     no_reg = calculate_cost_no_reg(y_bin, predictions)
     reg = calculate_cost_reg(reg_factor, thetas, X.shape[0])
     return no_reg + reg
