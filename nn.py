@@ -2,13 +2,11 @@
     TEMPLATE FOR MACHINE LEARNING HOMEWORK
     AUTHOR Eric Eaton
 """
-from functools import partial
 
-from numpy import random, zeros, ones, matrix, unique, dot, argmax, ndenumerate, fromfunction, vectorize, where
+from numpy import random, zeros, ones, matrix, unique, dot, argmax, fromfunction, vectorize, where
 from numpy.core.umath import square
 from numpy.ma import exp, true_divide, multiply, log, floor, sqrt
 from numpy.testing import assert_almost_equal
-from scipy import sparse
 from sklearn.metrics import accuracy_score
 
 
@@ -42,17 +40,20 @@ def init_thetas(epsilon, layers, d, num_classes, rand=True):
         return ones(size)
 
 
-def feed_forward(input, thetas):
+def feed_forward(input, thetas, K=None):
     activations = ones([thetas.shape[0], get_width(input) + 1])
     # L (including output layer), d+1 (for bias nodes)
+    d = None
     for l, theta in enumerate(thetas):
         activations[l, 1:] = input
         assert activations[l, 0] == 1
-        input = feed_forward_once(activations[l, :], reshape(theta))
+        if l+1 == thetas.shape[0]:
+            d = K  # on the final layer, we shorten the width of theta
+        input = feed_forward_once(activations[l, :], reshape(theta, d))
     return activations, input  # = output
 
 
-def feed_forward_multiple_inputs(inputs, thetas):
+def feed_forward_multiple_inputs(inputs, thetas, K=None):
     """
     :param inputs: matrix [[ n x d ]]
     :param thetas: matrix [[ num_layers x d(d+1) ]]
@@ -61,10 +62,12 @@ def feed_forward_multiple_inputs(inputs, thetas):
     """
     n, d = inputs.shape
     activations = ones([n, d + 1])  # d+1 for bias nodes
-    for i, theta in enumerate(thetas):
-        assert get_width(theta) == d * (d + 1)
+    d = None
+    for l, theta in enumerate(thetas):
         activations[:, 1:] = inputs
-        inputs = feed_forward_once(activations, reshape(theta))
+        if l+1 == thetas.shape[0]:
+            d = K  # on the final layer, we shorten the width of theta
+        inputs = feed_forward_once(activations, reshape(theta, d))
     return inputs  # = outputs
 
 
@@ -76,7 +79,7 @@ def get_error(output, classes, y_i):
 
 def reshape(theta, d=None):
     d1 = floor(sqrt(theta.size)) + 1
-    theta_ = theta if d is None else theta[d:]
+    theta_ = theta if d is None else theta[:d*d1]
     return theta_.reshape(d1, theta_.size / d1)
 
 
@@ -101,7 +104,9 @@ class NeuralNet:
     def get_gradients(self, X, y):
         gradients = zeros(self.thetas.shape)
         for i, instance in enumerate(X):
-            activations, output = feed_forward(instance, self.thetas)
+            activations, output = feed_forward(instance,
+                                               self.thetas,
+                                               self.classes.size)
             g_prime = get_g_prime(activations)
             error = get_error(output, self.classes, y[i])
             deltas = get_deltas(g_prime, self.thetas, error)
@@ -126,11 +131,14 @@ class NeuralNet:
         :return: [[ theta.shape ]] row i corresponding to
         the cost after perturbing the ith value in theta
         """
+
         def cost(i, j):
             perturbed_thetas = thetas.copy()
             perturbed_thetas[i, j] += c
-            predictions = feed_forward_multiple_inputs(X, perturbed_thetas)
+            predictions = feed_forward_multiple_inputs(X, perturbed_thetas,
+                                                       self.classes.size)
             return get_cost(X, y_bin, predictions, reg_factor, perturbed_thetas)
+
         reg_factor = self.reg_factor
         return fromfunction(vectorize(cost), thetas.shape)
 
