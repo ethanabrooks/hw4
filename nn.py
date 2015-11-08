@@ -4,7 +4,7 @@
 """
 from numpy import random, zeros, ones, eye, matrix, apply_along_axis, unique, dot, argmax
 from numpy.core.umath import square
-from numpy.ma import exp, true_divide, multiply, log, masked_array, floor, sqrt, divide
+from numpy.ma import exp, true_divide, multiply, log, floor, sqrt
 from numpy.testing import assert_almost_equal
 from sklearn.metrics import accuracy_score
 
@@ -34,13 +34,9 @@ def feed_forward_once(inputs, theta):
 def init_thetas(epsilon, layers, d, num_classes, rand=True):
     size = layers, (d+1) * d
     if rand:
-        thetas_unmasked = random.uniform(-epsilon, epsilon, size=size)
+        return random.uniform(-epsilon, epsilon, size=size)
     else:
-        thetas_unmasked = ones(size)
-    mask = zeros(thetas_unmasked.shape)
-    start_mask = (d+1) * num_classes
-    mask[-1, start_mask:] = 1
-    return masked_array(data=thetas_unmasked, mask=mask, fill_value=0)
+        return ones(size)
 
 
 def feed_forward(input, thetas):
@@ -76,9 +72,8 @@ def get_error(output, classes, y_i):
 
 
 def reshape(theta):
-    num_unmasked = masked_array(theta).count()
-    d1 = floor(sqrt(theta.size)) + 1
-    return theta[:num_unmasked].reshape(d1, num_unmasked / d1)
+    d = floor(sqrt(theta.size))
+    return theta.reshape(d + 1, d)
 
 
 class NeuralNet:
@@ -100,8 +95,7 @@ class NeuralNet:
         self.reg_factor = 0  # TODO modify
 
     def get_gradients(self, X, y):
-        gradients = self.thetas.copy()
-        gradients.fill(0)
+        gradients = zeros(self.thetas.shape)
         for i, instance in enumerate(X):
             activations, output = feed_forward(instance, self.thetas)
             g_prime = get_g_prime(activations)
@@ -202,7 +196,7 @@ def get_deltas(g_prime, thetas, last_delta):
     """
     num_layers, d = g_prime.shape
     deltas = zeros([num_layers + 1, d])
-    deltas[:, :last_delta.size] = last_delta
+    deltas[-1, :last_delta.size] = last_delta
     hidden_layer_indices = range(num_layers - 1, 0, -1)
     for l in hidden_layer_indices:
         deltas[l, :] = next_delta(thetas, deltas, g_prime, l)

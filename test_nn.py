@@ -1,4 +1,5 @@
 from numpy import vstack, hstack, array
+from numpy.ma import masked_array
 
 __author__ = 'Ethan'
 from nn import *
@@ -39,44 +40,12 @@ def test_feed_forward_once():
     actual = feed_forward_once(inputs, theta)
     assert_almost_equal(actual, desired)
 
-    inputs = matrix([
-        [4, 3, 1]
-    ])
-    theta_ravel = masked_array([1, 2, 1.2, 1.6, -3, 4])
-    mask = zeros(theta_ravel.shape)
-    mask[3:] = 1
-    theta_ravel.mask = mask
-    theta = reshape(theta_ravel)
-    desired = matrix([[0.9999863259909154]])
-    actual = feed_forward_once(inputs, theta)
-    assert_almost_equal(actual, desired)
-
 
 def test_init_thetas():
     d = 2
     layers = 1
     num_classes = 2
     desired = masked_array(ones((1, 6)))
-    actual = init_thetas(1, layers, d, num_classes, False)
-    assert_almost_equal(actual, desired)
-
-    d = 2
-    layers = 1
-    num_classes = 1
-    data = ones((1, 6))
-    mask = data.copy()
-    mask[:, :3] = 0
-    desired = masked_array(data=data, mask=mask)
-    actual = init_thetas(1, layers, d, num_classes, False)
-    assert_almost_equal(actual, desired)
-
-    d = 2
-    layers = 2
-    num_classes = 1
-    data = ones((2, 6))
-    mask = zeros(data.shape)
-    mask[1, 3:] = 1
-    desired = masked_array(data=data, mask=mask)
     actual = init_thetas(1, layers, d, num_classes, False)
     assert_almost_equal(actual, desired)
 
@@ -284,7 +253,7 @@ def test_get_error():
     classes = array(['red', 'green', 'blue'])
     y_i = 'blue'
     actual = get_error(output, classes, y_i)
-    desired = [.1, .2, .3]
+    desired = [.1, .2, -.3]
     assert_almost_equal(actual, desired)
 
 
