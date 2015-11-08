@@ -352,6 +352,6 @@ def test_check_gradient():
         [0, 1]
     ])
     y = array([0, 1])
-    net.fit(X, y)
+    # net.fit(X, y)
 
 

@@ -54,9 +54,7 @@ def feed_forward(input, thetas, K=None):
         if l + 1 == thetas.shape[0]:
             d = K  # on the final layer, we shorten the width of theta
         theta_ = reshape(theta, d)
-        theta_compare = reshape(theta)
         input = feed_forward_once(activations[l, :], theta_)
-        input_compare = feed_forward_once(activations[l, :], theta_compare)
     return activations, input  # = output
 
 
@@ -75,9 +73,7 @@ def feed_forward_multiple_inputs(inputs, thetas, K=None):
         if l + 1 == thetas.shape[0]:
             d = K  # on the final layer, we shorten the width of theta
         theta_ = reshape(theta, d)
-        theta_compare = reshape(theta)
         inputs = feed_forward_once(activations, theta_)
-        input_compare = feed_forward_once(activations[l, :], theta_compare)
     return inputs  # = outputs
 
 
@@ -116,8 +112,8 @@ class NeuralNet:
         gradients.mask = self.thetas.mask
         for i, instance in enumerate(X):
             activations, output = feed_forward(instance,
-                                               self.thetas)
-                                               # self.classes.size)
+                                               self.thetas,
+                                               self.classes.size)
             g_prime = get_g_prime(activations)
             error = get_error(output, self.classes, y[i])
             deltas = get_deltas(g_prime, self.thetas, error)
@@ -139,8 +135,8 @@ class NeuralNet:
             perturbed_thetas = thetas.copy()
             perturbed_thetas[i, j] += c
             predictions = feed_forward_multiple_inputs(X,
-                                                       perturbed_thetas)
-                                                       # self.classes.size)
+                                                       perturbed_thetas,
+                                                       self.classes.size)
             return get_cost(
                 X, y_bin, predictions[:, :self.classes.size], reg_factor, perturbed_thetas
             )
