@@ -108,7 +108,7 @@ class NeuralNet:
             error = get_error(output, self.classes, y[i])
             deltas = get_deltas(g_prime, self.thetas, error)
             update_gradient(gradients, activations, deltas)
-        return gradients
+        return gradients / X.shape[0]
 
     def check_gradient(self, gradient, X, y, c=.0001):
         y_bin = get_y_bin(y, self.classes)
