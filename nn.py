@@ -3,9 +3,10 @@
     AUTHOR Eric Eaton
 """
 
-from numpy import random, zeros, ones, matrix, unique, dot, argmax, fromfunction, vectorize, where
+from numpy import random, zeros, ones, matrix, unique, argmax, fromfunction, vectorize, where
 from numpy.core.umath import square
 from numpy.ma import exp, true_divide, multiply, log, floor, sqrt
+from numpy import ma
 from numpy.testing import assert_almost_equal
 from sklearn.metrics import accuracy_score
 
@@ -28,22 +29,23 @@ def feed_forward_once(inputs, theta):
     """
     d1, d = theta.shape
     assert get_width(inputs) == d1
-
-    return sigmoid(dot(inputs, theta))
+    dot_product = ma.dot(inputs, theta, strict=True)
+    return sigmoid(dot_product)
 
 
 def init_thetas(epsilon, layers, d, num_classes, rand=True):
     size = layers, (d + 1) * d
     if rand:
-        thetas = random.uniform(-epsilon, epsilon, size=size)
+        thetas_unmasked = random.uniform(-epsilon, epsilon, size=size)
     else:
-        thetas = ones(size)
-    thetas[-1].reshape(d + 1, d)[:, num_classes:] = None
-    return thetas
+        thetas_unmasked = ones(size)
+    mask = zeros(thetas_unmasked.shape)
+    mask[-1].reshape(d + 1, d)[:, num_classes:] = 1
+    return ma.array(data=thetas_unmasked, mask=mask, fill_value=0)
 
 
 def feed_forward(input, thetas, K=None):
-    activations = ones([thetas.shape[0], get_width(input) + 1])
+    activations = ma.ones([thetas.shape[0], get_width(input) + 1])
     # L (including output layer), d+1 (for bias nodes)
     d = None
     for l, theta in enumerate(thetas):
@@ -51,7 +53,8 @@ def feed_forward(input, thetas, K=None):
         assert activations[l, 0] == 1
         if l + 1 == thetas.shape[0]:
             d = K  # on the final layer, we shorten the width of theta
-        input = feed_forward_once(activations[l, :], reshape(theta, d))
+        theta_ = reshape(theta, d)
+        input = feed_forward_once(activations[l, :], theta_)
     return activations, input  # = output
 
 
@@ -63,7 +66,7 @@ def feed_forward_multiple_inputs(inputs, thetas, K=None):
     assumes num classes = d !
     """
     n, d = inputs.shape
-    activations = ones([n, d + 1])  # d+1 for bias nodes
+    activations = ma.ones([n, d + 1])  # d+1 for bias nodes
     d = None
     for l, theta in enumerate(thetas):
         activations[:, 1:] = inputs
@@ -75,14 +78,14 @@ def feed_forward_multiple_inputs(inputs, thetas, K=None):
 
 def get_error(output, classes, y_i):
     error = output.copy()
-    error[where(classes == y_i)] = output[classes == y_i] - 1
+    error[where(classes == y_i)] = output[where(classes == y_i)] - 1
     return error
 
 
 def reshape(theta, d=None):
     d1 = floor(sqrt(theta.size)) + 1
     theta_ = theta if d is None else theta[:d * d1]
-    return theta_.reshape(d1, theta_.size / d1)
+    return theta_.reshape(d1, -1)
 
 
 class NeuralNet:
@@ -104,7 +107,8 @@ class NeuralNet:
         self.reg_factor = 0  # .000001
 
     def get_gradients(self, X, y):
-        gradients = zeros(self.thetas.shape)
+        gradients = ma.zeros(self.thetas.shape)
+        gradients.mask = self.thetas.mask
         for i, instance in enumerate(X):
             activations, output = feed_forward(instance,
                                                self.thetas)
@@ -113,14 +117,6 @@ class NeuralNet:
             deltas = get_deltas(g_prime, self.thetas, error)
             update_gradient(gradients, activations, deltas)
         return gradients / X.shape[0]
-
-    def check_gradient(self, gradient, X, y, c=.0001):
-        y_bin = get_y_bin(y, self.classes)
-        cost_plus, cost_minus = (self.multicost(
-            X, y_bin, self.thetas, c_,
-        ) for c_ in (c, -c))
-        grad_approx = get_grad_approx(c, cost_minus, cost_plus)
-        assert_almost_equal(gradient, grad_approx, decimal=4)
 
     def multicost(self, X, y_bin, thetas, c):
         """
@@ -142,7 +138,16 @@ class NeuralNet:
             )
 
         reg_factor = self.reg_factor
-        return fromfunction(vectorize(cost), thetas.shape)
+        costs = fromfunction(vectorize(cost), thetas.shape)
+        return ma.array(data=costs, mask=thetas.mask)
+
+    def check_gradient(self, gradient, X, y, c=.0001):
+        y_bin = get_y_bin(y, self.classes)
+        cost_plus, cost_minus = (self.multicost(
+            X, y_bin, self.thetas, c_,
+        ) for c_ in (c, -c))
+        grad_approx = get_grad_approx(c, cost_minus, cost_plus)
+        assert_almost_equal(gradient, grad_approx, decimal=4)
 
     def fit(self, X, y):
         """
@@ -195,7 +200,7 @@ def get_g_prime(activations):
 def next_delta(thetas, deltas, g_prime, l):
     #  recover weights for lth layer, omitting bias nodes
     theta_no_bias = reshape(thetas[l, :])[1:, :]
-    return multiply(dot(deltas[l + 1, :], theta_no_bias.T), g_prime[l, :])
+    return multiply(ma.dot(deltas[l + 1, :], theta_no_bias.T), g_prime[l, :])
 
 
 def get_deltas(g_prime, thetas, last_delta):
@@ -206,7 +211,7 @@ def get_deltas(g_prime, thetas, last_delta):
     :return: deltas, matrix [[ layers x d+1 ]]
     """
     num_layers, d = g_prime.shape
-    deltas = zeros([num_layers + 1, d])
+    deltas = ma.zeros([num_layers + 1, d])
     deltas[-1, :last_delta.size] = last_delta
     hidden_layer_indices = range(num_layers - 1, 0, -1)
     for l in hidden_layer_indices:
@@ -216,13 +221,15 @@ def get_deltas(g_prime, thetas, last_delta):
 
 def get_gradient_update_val(activations, deltas, l):
     # rows ~ ouputs, columns ~ inputs
-    activation_T = matrix(activations[l, :]).T
-    return (activation_T * deltas[l + 1, :]).ravel()
+    activation_T = matrix(activations)[l, :].T
+    delta = deltas[l + 1, :]
+    dot_product = activation_T * delta
+    return dot_product.ravel()
 
 
 def gradient_update_matrix(activations, deltas):
     num_layers, d1 = activations.shape
-    update_vals = ones([num_layers, d1 * (d1 - 1)])
+    update_vals = ma.ones([num_layers, d1 * (d1 - 1)])
     for l in range(num_layers):
         update_vals[l, :] = get_gradient_update_val(activations, deltas, l)
     return update_vals
@@ -233,7 +240,8 @@ def update_thetas(thetas, learningRate, gradient):
 
 
 def update_gradient(gradient, activations, deltas):
-    gradient += gradient_update_matrix(activations, deltas)
+    update_matrix = gradient_update_matrix(activations, deltas)
+    gradient += update_matrix
 
 
 def regularize_gradient(gradient, reg_factor, thetas):
