@@ -1,4 +1,4 @@
-from numpy import vstack
+from numpy import vstack, hstack, array
 
 __author__ = 'Ethan'
 from nn import *
@@ -27,7 +27,7 @@ def test_feed_forward_once():
         [1, 1, 2],
         [4, 3, 1]
     ])
-    theta = matrix([
+    theta = masked_array([
         [1, -2],
         [1.2, 1.6],
         [-3, 4]
@@ -39,11 +39,52 @@ def test_feed_forward_once():
     actual = feed_forward_once(inputs, theta)
     assert_almost_equal(actual, desired)
 
+    inputs = matrix([
+        [4, 3, 1]
+    ])
+    theta_ravel = masked_array([1, 2, 1.2, 1.6, -3, 4])
+    mask = zeros(theta_ravel.shape)
+    mask[3:] = 1
+    theta_ravel.mask = mask
+    theta = reshape(theta_ravel)
+    desired = matrix([[0.9999863259909154]])
+    actual = feed_forward_once(inputs, theta)
+    assert_almost_equal(actual, desired)
+
+
+def test_init_thetas():
+    d = 2
+    layers = 1
+    num_classes = 2
+    desired = masked_array(ones((1, 6)))
+    actual = init_thetas(1, layers, d, num_classes, False)
+    assert_almost_equal(actual, desired)
+
+    d = 2
+    layers = 1
+    num_classes = 1
+    data = ones((1, 6))
+    mask = data.copy()
+    mask[:, :3] = 0
+    desired = masked_array(data=data, mask=mask)
+    actual = init_thetas(1, layers, d, num_classes, False)
+    assert_almost_equal(actual, desired)
+
+    d = 2
+    layers = 2
+    num_classes = 1
+    data = ones((2, 6))
+    mask = zeros(data.shape)
+    mask[1, 3:] = 1
+    desired = masked_array(data=data, mask=mask)
+    actual = init_thetas(1, layers, d, num_classes, False)
+    assert_almost_equal(actual, desired)
+
 
 def test_reshape():
-    theta = matrix([1, 2, 3, 4, 5, 6])
+    theta = masked_array([1, 2, 3, 4, 5, 6])
     d = 2
-    actual = reshape(theta, d)
+    actual = reshape(theta)
     desired = matrix([
         [1, 2],
         [3, 4],
@@ -54,25 +95,24 @@ def test_reshape():
 
 def test_feed_forward():
     input = matrix([1, 2])
-    thetas = zeros([0, 0])
-    final_theta = matrix([
+    thetas = masked_array([
         [1, 2, 3, 4, 5, 6]
     ])
-    activations = matrix([[1, 1, 2]])
-    output = matrix([[0.9999991684719722, 0.9999999847700205]])
+    activations = masked_array([[1, 1, 2]])
+    output = masked_array([0.9999991684719722, 0.9999999847700205])
     desired = activations, output
-    actual = feed_forward(input, thetas, final_theta)
+    actual = feed_forward(input, thetas)
     for a, d in zip(actual, desired):
         assert_almost_equal(a, d)
 
-    thetas = matrix([
+    thetas = masked_array([
         [1, 2, 3, 4, 5, 6],
+        [11, 12, 13, 14, -15, -16]
     ])
-    final_theta = matrix([[11, 12, 13, 14, -15, -16]])
-    actual = feed_forward(input, thetas, final_theta)
-    activations2 = matrix([[1, 0.9999991684719722, 0.9999999847700205]])
-    activations = vstack([activations, activations2])
-    theta2 = matrix([
+    actual = feed_forward(input, thetas)
+    activations2 = masked_array([[1, 0.9999991684719722, 0.9999999847700205]])
+    activations = masked_array(vstack([activations, activations2]))
+    theta2 = masked_array([
         [11, 12],
         [13, 14],
         [-15, -16]
@@ -82,21 +122,35 @@ def test_feed_forward():
     for a, d in zip(actual, desired):
         assert_almost_equal(a, d)
 
+    thetas = masked_array([
+        [.1, .2, -.3, .4, -.5, .6],
+        [.11, .12, -.13, .14, -.15, -.16]
+    ])
+    mask = zeros(thetas.shape)
+    mask[1, 3:] = 1
+    thetas.mask = mask
+    inputs = matrix([[4, 3]])
+    _, actual = feed_forward(inputs, thetas)
+    input1 = hstack((ones((1, 1)), inputs))
+    first_output = feed_forward_once(input1, reshape(thetas[0, :]))
+    input2 = hstack((ones((1, 1)), first_output))
+    desired = feed_forward_once(input2, reshape(thetas[1, :])).flatten()
+    assert_almost_equal(actual, desired)
+
 
 def test_feed_forward_multiple_inputs():
     inputs = random.uniform(-2, 2, size=(2, 2))
-    thetas = zeros([0, 0])
-    final_theta = random.uniform(-2, 2, size=(1, 6))
+    thetas = masked_array(random.uniform(-2, 2, size=(1, 6)))
     outputs = []
     for input in inputs:
-        outputs.append(feed_forward(input, thetas, final_theta)[1])
+        outputs.append(feed_forward(input, thetas)[1])
     desired = vstack(outputs)
-    actual = feed_forward_multiple_inputs(inputs, thetas, final_theta)
+    actual = feed_forward_multiple_inputs(inputs, thetas)
     assert_almost_equal(desired, actual)
 
 
 def test_get_g_prime():
-    a = matrix([
+    a = masked_array([
         [1, 1, 2],
         [1, 3, 4]
     ])
@@ -109,47 +163,47 @@ def test_get_g_prime():
 
 
 def test_next_delta():
-    deltas = matrix([
+    deltas = masked_array([
         [0, 0],  # unused
         [2, -1]
     ])
-    thetas = matrix([
+    thetas = masked_array([
         [4, 3, -3, 2, -5, -6]
     ])
-    g_prime = matrix([
+    g_prime = masked_array([
         [0, 5],
     ])
-    desired = matrix([0, -20])
+    desired = masked_array([0, -20])
     actual = next_delta(thetas, deltas, g_prime, 0)
     # we would actually never calculate l=0
     assert_almost_equal(actual, desired)
 
-    deltas = matrix([
+    deltas = masked_array([
         [0, 0],  # unused
         [-34.5, -60],
         [4, 5]
     ])
-    thetas = matrix([
+    thetas = masked_array([
         [1, 2,  # unused
          4, -3, -5, 2],
         [11, 12,  # unused
          13, -15, 14, -16]
     ])
-    g_prime = matrix([
+    g_prime = masked_array([
         [.5, 2],
         [1.5, 2.5],
     ])
-    desired = matrix([21, 105])
+    desired = masked_array([21, 105])
     actual = next_delta(thetas, deltas, g_prime, 0)
     # we would actually never calculate l=0
     assert_almost_equal(actual, desired)
-    desired = matrix([-34.5, -60])
+    desired = masked_array([-34.5, -60])
     actual = next_delta(thetas, deltas, g_prime, 1)
     assert_almost_equal(actual, desired)
 
 
 def test_get_deltas():
-    thetas = matrix([
+    thetas = masked_array([
         [1, 2, 4, -3, -5, 2],
         [11, 12, 13, -15, 14, -16],
         [11, 12, 0, 1, 0, 1]
@@ -213,11 +267,11 @@ def test_gradient_update_matrix():
 
 
 def test_update_theta():
-    thetas = matrix([
+    thetas = masked_array([
         [1, 2, 4, -3, -5, 2],
     ])
     learning_rate = 1
-    gradient = matrix([
+    gradient = masked_array([
         [11, 12, 0, 1, 0, 1]
     ])
     update_thetas(thetas, learning_rate, gradient)
@@ -225,7 +279,116 @@ def test_update_theta():
     assert_almost_equal(thetas, desired)
 
 
-def test_calculate_cost():
-    y = matrix([1, 2, 3])
-    predictions = matrix([1, 1, 4])
-    desired = matrix([0, ])
+def test_get_error():
+    output = array([.1, .2, .7])
+    classes = array(['red', 'green', 'blue'])
+    y_i = 'blue'
+    actual = get_error(output, classes, y_i)
+    desired = [.1, .2, .3]
+    assert_almost_equal(actual, desired)
+
+
+def test_get_y_bin():
+    classes = array(['red', 'green'])
+    y = array(['red', 'red', 'green'])
+    actual = get_y_bin(y, classes)
+    desired = array([
+        [1, 0],
+        [1, 0],
+        [0, 1]
+    ])
+    assert_almost_equal(actual, desired)
+
+
+def test_calculate_cost_no_reg():
+    y = matrix([1, 0, 0])
+    predictions = matrix([.1, .2, .7])
+    desired = 3.72970145
+    actual = calculate_cost_no_reg(y, predictions)
+    assert_almost_equal(actual, desired)
+
+    y = matrix([0, 0, 1])
+    predictions = matrix([.1, .2, .7])
+    actual = calculate_cost_no_reg(y, predictions)
+    desired = 0.68517901
+    assert_almost_equal(actual, desired)
+
+    y = array([
+        [1, 0, 0],
+        [0, 0, 1]
+    ])
+    predictions = array([
+        [.1, .2, .7],
+        [.1, .2, .7]
+    ])
+    actual = calculate_cost_no_reg(y, predictions)
+    desired = 2.20744023
+    assert_almost_equal(actual, desired)
+
+
+def test_calculate_cost_reg():
+    reg_factor = 2
+    theta = masked_array([
+        [1, -2],
+        [1, 1],
+        [-3, 4]
+    ])
+    n = 1
+    desired = 1 + 4 + 1 + 1 + 9 + 16
+    actual = calculate_cost_reg(reg_factor, theta, n)
+    assert_almost_equal(actual, desired)
+
+    reg_factor = 1
+    theta = masked_array([
+        [1, -2],
+        [1, 1],
+        [-3, 4]
+    ])
+    n = 2
+    desired = 8
+    actual = calculate_cost_reg(reg_factor, theta, n)
+    assert_almost_equal(actual, desired)
+
+
+def test_perturb():
+    theta = masked_array([
+        [1, -2],
+        [1, 1],
+    ])
+    c = 1
+    desired = array([
+        [2, -2, 1, 1],
+        [1, -1, 1, 1],
+        [1, -2, 2, 1],
+        [1, -2, 1, 2]
+    ])
+    actual = perturb(theta, c)
+    assert_almost_equal(actual, desired)
+
+
+def test_get_grad_approx():
+    c = 1
+    cost_minus = masked_array([
+        [0, -3],
+        [-3, 4]
+    ])
+    cost_plus = masked_array([
+        [1, -1],
+        [-3, 4]
+    ])
+    desired = masked_array([
+        [.5, 1],
+        [0, 0]
+    ])
+    actual = get_grad_approx(c, cost_minus, cost_plus)
+    assert_almost_equal(actual, desired)
+
+
+def test_check_gradient():
+    net = NeuralNet(1, gradientChecking=True)
+    X = matrix([
+        [1, 0],
+        [0, 1],
+    ])
+    y = array([0, 1])
+    net.fit(X, y)
