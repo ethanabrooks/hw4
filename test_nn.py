@@ -1,4 +1,5 @@
 from numpy import vstack, hstack, array
+from numpy.ma import masked_array
 
 __author__ = 'Ethan'
 from nn import *
@@ -39,19 +40,6 @@ def test_feed_forward_once():
     actual = feed_forward_once(inputs, theta)
     assert_almost_equal(actual, desired)
 
-    inputs = matrix([
-        [4, 3, 1]
-    ])
-    theta_ravel = masked_array([1, 2, 1.2, 1.6, -3, 4])
-    mask = zeros(theta_ravel.shape)
-    mask[3:] = 1
-    theta_ravel.mask = mask
-    theta = reshape(theta_ravel)
-    desired = matrix([[0.9999863259909154]])
-    actual = feed_forward_once(inputs, theta)
-    assert_almost_equal(actual, desired)
-
-
 def test_init_thetas():
     d = 2
     layers = 1
@@ -60,30 +48,10 @@ def test_init_thetas():
     actual = init_thetas(1, layers, d, num_classes, False)
     assert_almost_equal(actual, desired)
 
-    d = 2
-    layers = 1
-    num_classes = 1
-    data = ones((1, 6))
-    mask = data.copy()
-    mask[:, :3] = 0
-    desired = masked_array(data=data, mask=mask)
-    actual = init_thetas(1, layers, d, num_classes, False)
-    assert_almost_equal(actual, desired)
-
-    d = 2
-    layers = 2
-    num_classes = 1
-    data = ones((2, 6))
-    mask = zeros(data.shape)
-    mask[1, 3:] = 1
-    desired = masked_array(data=data, mask=mask)
-    actual = init_thetas(1, layers, d, num_classes, False)
-    assert_almost_equal(actual, desired)
 
 
 def test_reshape():
     theta = masked_array([1, 2, 3, 4, 5, 6])
-    d = 2
     actual = reshape(theta)
     desired = matrix([
         [1, 2],
@@ -121,21 +89,6 @@ def test_feed_forward():
     desired = activations, output
     for a, d in zip(actual, desired):
         assert_almost_equal(a, d)
-
-    thetas = masked_array([
-        [.1, .2, -.3, .4, -.5, .6],
-        [.11, .12, -.13, .14, -.15, -.16]
-    ])
-    mask = zeros(thetas.shape)
-    mask[1, 3:] = 1
-    thetas.mask = mask
-    inputs = matrix([[4, 3]])
-    _, actual = feed_forward(inputs, thetas)
-    input1 = hstack((ones((1, 1)), inputs))
-    first_output = feed_forward_once(input1, reshape(thetas[0, :]))
-    input2 = hstack((ones((1, 1)), first_output))
-    desired = feed_forward_once(input2, reshape(thetas[1, :])).flatten()
-    assert_almost_equal(actual, desired)
 
 
 def test_feed_forward_multiple_inputs():
@@ -350,20 +303,20 @@ def test_calculate_cost_reg():
     assert_almost_equal(actual, desired)
 
 
-def test_perturb():
-    theta = masked_array([
-        [1, -2],
-        [1, 1],
-    ])
-    c = 1
-    desired = array([
-        [2, -2, 1, 1],
-        [1, -1, 1, 1],
-        [1, -2, 2, 1],
-        [1, -2, 1, 2]
-    ])
-    actual = perturb(theta, c)
-    assert_almost_equal(actual, desired)
+# def test_perturb():
+#     theta = masked_array([
+#         [1, -2],
+#         [1, 1],
+#     ])
+#     c = 1
+#     desired = array([
+#         [2, -2, 1, 1],
+#         [1, -1, 1, 1],
+#         [1, -2, 2, 1],
+#         [1, -2, 1, 2]
+#     ])
+#     actual = perturb(theta, c)
+#     assert_almost_equal(actual, desired)
 
 
 def test_get_grad_approx():

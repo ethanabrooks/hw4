@@ -2,10 +2,13 @@
     TEMPLATE FOR MACHINE LEARNING HOMEWORK
     AUTHOR Eric Eaton
 """
-from numpy import random, zeros, ones, eye, matrix, apply_along_axis, unique, dot, argmax
+from functools import partial
+
+from numpy import random, zeros, ones, matrix, unique, dot, argmax, ndenumerate, fromfunction, vectorize, where
 from numpy.core.umath import square
-from numpy.ma import exp, true_divide, multiply, log, masked_array, floor, sqrt, divide
+from numpy.ma import exp, true_divide, multiply, log, floor, sqrt
 from numpy.testing import assert_almost_equal
+from scipy import sparse
 from sklearn.metrics import accuracy_score
 
 
@@ -32,15 +35,11 @@ def feed_forward_once(inputs, theta):
 
 
 def init_thetas(epsilon, layers, d, num_classes, rand=True):
-    size = layers, (d+1) * d
+    size = layers, (d + 1) * d
     if rand:
-        thetas_unmasked = random.uniform(-epsilon, epsilon, size=size)
+        return random.uniform(-epsilon, epsilon, size=size)
     else:
-        thetas_unmasked = ones(size)
-    mask = zeros(thetas_unmasked.shape)
-    start_mask = (d+1) * num_classes
-    mask[-1, start_mask:] = 1
-    return masked_array(data=thetas_unmasked, mask=mask, fill_value=0)
+        return ones(size)
 
 
 def feed_forward(input, thetas):
@@ -71,14 +70,14 @@ def feed_forward_multiple_inputs(inputs, thetas):
 
 def get_error(output, classes, y_i):
     error = output.copy()
-    error[classes == y_i] = output[classes == y_i] - 1
+    error[where(classes == y_i)] = output[classes == y_i] - 1
     return error
 
 
-def reshape(theta):
-    num_unmasked = masked_array(theta).count()
+def reshape(theta, d=None):
     d1 = floor(sqrt(theta.size)) + 1
-    return theta[:num_unmasked].reshape(d1, num_unmasked / d1)
+    theta_ = theta if d is None else theta[d:]
+    return theta_.reshape(d1, theta_.size / d1)
 
 
 class NeuralNet:
@@ -100,8 +99,7 @@ class NeuralNet:
         self.reg_factor = .00001
 
     def get_gradients(self, X, y):
-        gradients = self.thetas.copy()
-        gradients.fill(0)
+        gradients = zeros(self.thetas.shape)
         for i, instance in enumerate(X):
             activations, output = feed_forward(instance, self.thetas)
             g_prime = get_g_prime(activations)
@@ -113,12 +111,12 @@ class NeuralNet:
     def check_gradient(self, gradient, X, y, c=.0001):
         y_bin = get_y_bin(y, self.classes)
         cost_plus, cost_minus = (self.multicost(
-            X, y_bin, perturb(self.thetas, c_),
+            X, y_bin, self.thetas, c_,
         ) for c_ in (c, -c))
         grad_approx = get_grad_approx(c, cost_minus, cost_plus)
         assert_almost_equal(gradient, grad_approx, decimal=4)
 
-    def multicost(self, X, y_bin, perturbed_thetas):
+    def multicost(self, X, y_bin, thetas, c):
         """
         :param X: inputs
         :param y_bin: [[ n x K ]] of bin values
@@ -128,16 +126,13 @@ class NeuralNet:
         :return: [[ theta.shape ]] row i corresponding to
         the cost after perturbing the ith value in theta
         """
-        def cost(ravel_thetas, shape, reg_factor):
-            thetas = ravel_thetas.reshape(shape)
-            predictions = feed_forward_multiple_inputs(X, thetas)
-            return get_cost(X, y_bin, predictions, reg_factor, thetas)
-
-        cost_ravel = apply_along_axis(cost, 1,
-                                      perturbed_thetas,
-                                      self.thetas.shape,
-                                      self.reg_factor)
-        return cost_ravel.reshape(self.thetas.shape)
+        def cost(i, j):
+            perturbed_thetas = thetas.copy()
+            perturbed_thetas[i, j] += c
+            predictions = feed_forward_multiple_inputs(X, perturbed_thetas)
+            return get_cost(X, y_bin, predictions, reg_factor, perturbed_thetas)
+        reg_factor = self.reg_factor
+        return fromfunction(vectorize(cost), thetas.shape)
 
     def fit(self, X, y):
         """
@@ -172,7 +167,7 @@ class NeuralNet:
     def score(self, X_train, y_train, X_test, y_test):
         self.fit(X_train, y_train)
         probabilities = self.predict(X_test)
-        y_pred = self.classes[argmax(probabilities)]
+        y_pred = self.classes[argmax(probabilities, axis=1)]
         return accuracy_score(y_test, y_pred)
 
     def visualizeHiddenNodes(self, filename):
@@ -251,11 +246,6 @@ def calculate_cost_no_reg(y_bin, predictions):
 
 def calculate_cost_reg(reg_factor, thetas, n):
     return reg_factor / (2. * n) * square(thetas).sum()
-
-
-def perturb(thetas, c):
-    thetas_ravel = thetas.ravel()
-    return thetas_ravel + c * eye(thetas_ravel.shape[0])
 
 
 def get_grad_approx(c, cost_minus, cost_plus):
