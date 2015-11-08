@@ -202,7 +202,7 @@ def get_deltas(g_prime, thetas, last_delta):
     """
     num_layers, d = g_prime.shape
     deltas = zeros([num_layers + 1, d])
-    deltas[:, :last_delta.size] = last_delta
+    deltas[-1, :last_delta.size] = last_delta
     hidden_layer_indices = range(num_layers - 1, 0, -1)
     for l in hidden_layer_indices:
         deltas[l, :] = next_delta(thetas, deltas, g_prime, l)

@@ -284,7 +284,7 @@ def test_get_error():
     classes = array(['red', 'green', 'blue'])
     y_i = 'blue'
     actual = get_error(output, classes, y_i)
-    desired = [.1, .2, .3]
+    desired = [.1, .2, -.3]
     assert_almost_equal(actual, desired)
 
 
@@ -385,10 +385,10 @@ def test_get_grad_approx():
 
 
 def test_check_gradient():
-    net = NeuralNet(1, gradientChecking=True)
+    net = NeuralNet(1, gradientChecking=True, randTheta=False)
     X = matrix([
-        [1, 0],
-        [0, 1],
+        [1],
+        [1]
     ])
-    y = array([0, 1])
+    y = array([1, 1])
     net.fit(X, y)
