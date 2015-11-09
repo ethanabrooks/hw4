@@ -2,7 +2,7 @@
     TEMPLATE FOR MACHINE LEARNING HOMEWORK
     AUTHOR Eric Eaton
 """
-
+from PIL import Image
 from numpy import ma, c_, dot, array
 from numpy import random, zeros, ones, matrix, unique, argmax, fromfunction, vectorize, where, r_
 from numpy.core.umath import square
@@ -100,7 +100,7 @@ def reshape(theta, d=None):
 
 
 class NeuralNet:
-    def __init__(self, layers, epsilon=0.12, learningRate=.001, numEpochs=100, gradientChecking=False, randTheta=True, hl_size=25):
+    def __init__(self, layers, epsilon=0.12, learningRate=.5, numEpochs=100, gradientChecking=False, randTheta=True, hl_size=25):
         """
         Constructor
         Arguments:
@@ -204,6 +204,18 @@ class NeuralNet:
         Arguments:
             filename - the filename to store the image
         """
+
+        big_img = Image.new('RGB', (100, 100), "black")  # create a new black image
+        for weight in self.theta1:
+            weights = weight.reshape(20, 20)
+            sml_img = Image.new('RGB', (20, 20), "black")
+            pixels = sml_img.load()
+            for i in range(sml_img.size[0]):  # for every pixel:
+                for j in range(sml_img.size[1]):
+                    color = weights[i, j]
+                    pixels[i, j] = color
+                    
+        img.show()
 
 
 def get_g_prime(activations):
