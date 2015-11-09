@@ -1,26 +1,9 @@
-from numpy import vstack, hstack, array
+from numpy import vstack, hstack, array, eye
 from numpy.ma import masked_array
 
 __author__ = 'Ethan'
 from nn import *
 
-
-def test_sigmoid():
-    x = .5
-    actual = sigmoid(x)
-    desired = 0.6224593
-    assert_almost_equal(actual, desired)
-
-    x = matrix([
-        [1, 2],
-        [3, 4]
-    ])
-    desired = matrix([
-        [0.7310585786300049, 0.8807970779778823],
-        [0.9525741268224334, 0.9820137900379085]
-    ])
-    actual = sigmoid(x)
-    assert_almost_equal(actual, desired)
 
 
 def test_feed_forward_once():
@@ -42,11 +25,13 @@ def test_feed_forward_once():
 
 def test_init_thetas():
     d = 2
-    layers = 1
+    hidden_layers = 1
     num_classes = 2
-    desired = masked_array(ones((1, 6)))
-    actual = init_thetas(1, layers, d, num_classes, False)
-    assert_almost_equal(actual, desired)
+    num_features = d
+    desired = ma.ones((3, 2)), masked_array(ones((1, 6)))
+    actual = init_thetas(1, hidden_layers, d, num_features, num_classes, False)
+    for a,d in zip(actual, desired):
+        assert_almost_equal(a, d)
 
 
 
@@ -62,14 +47,16 @@ def test_reshape():
 
 
 def test_feed_forward():
-    input = matrix([1, 2])
+    input = array([1, 2])
     thetas = masked_array([
         [1, 2, 3, 4, 5, 6]
     ])
     activations = masked_array([[1, 1, 2]])
     output = masked_array([0.9999991684719722, 0.9999999847700205])
     desired = activations, output
-    actual = feed_forward(input, self.theta1, thetas)
+    theta1 = eye(3)[:, 1:]
+    hl_size = 2
+    actual = feed_forward(input, theta1, thetas)
     for a, d in zip(actual, desired):
         assert_almost_equal(a, d)
 
@@ -77,7 +64,9 @@ def test_feed_forward():
         [1, 2, 3, 4, 5, 6],
         [11, 12, 13, 14, -15, -16]
     ])
-    actual = feed_forward(input, self.theta1, thetas)
+    theta1 = eye(3)[:, 1:]
+    hl_size = 2
+    actual = feed_forward(input, theta1, thetas)
     activations2 = masked_array([[1, 0.9999991684719722, 0.9999999847700205]])
     activations = masked_array(vstack([activations, activations2]))
     theta2 = masked_array([
@@ -92,13 +81,14 @@ def test_feed_forward():
 
 
 def test_feed_forward_multiple_inputs():
-    inputs = random.uniform(-2, 2, size=(2, 2))
+    inputs = random.uniform(-2, 2, size=(2, 5))
     thetas = masked_array(random.uniform(-2, 2, size=(1, 6)))
     outputs = []
+    theta1 = random.uniform(-2, 2, size=(6, 2))
     for input in inputs:
-        outputs.append(feed_forward(input, self.theta1, thetas)[1])
+        outputs.append(feed_forward(input, theta1, thetas)[1])
     desired = vstack(outputs)
-    actual = feed_forward_multiple_inputs(inputs, self.theta1, thetas)
+    actual = feed_forward_multiple_inputs(inputs, theta1, thetas)
     assert_almost_equal(desired, actual)
 
 
@@ -182,10 +172,9 @@ def test_get_gradient_update_val():
         [1, 2, 3]
     ])
     deltas = matrix([
-        [0, 0],
         [3, -3]
     ])
-    actual = get_gradient_update_val(activations, deltas, 0)
+    actual = get_gradient_update_val(activations, deltas)
     desired = matrix([3, -3, 6, -6, 9, -9])
     assert_almost_equal(actual, desired)
 
@@ -338,20 +327,24 @@ def test_get_grad_approx():
 
 
 def test_check_gradient():
-    net = NeuralNet(1, gradientChecking=True, randTheta=False)
+    net = NeuralNet(1, gradientChecking=True, randTheta=False, hl_size=5)
+    X = random.uniform(-2, 2, size=(2, 10))
+    y = random.uniform(-2, 2, size=(1, 2))
+    net.fit(X, y)
 
+    net = NeuralNet(1, gradientChecking=True, randTheta=False, hl_size=1)
+
+    X = matrix([[1]])
+    y = array([1])
+    # net.fit(X, y)
+
+    net = NeuralNet(1, gradientChecking=True, randTheta=False, hl_size=3)
     X = matrix([
         [1, 1, 0, 0],
         [0, 0, 1, 0]
     ])
     y = array([0, 1])
-    net.fit(X, y)
+    # net.fit(X, y)
 
-    X = matrix([
-        [1, 0],
-        [0, 1]
-    ])
-    y = array([0, 1])
-    net.fit(X, y)
 
 
