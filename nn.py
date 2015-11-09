@@ -168,6 +168,7 @@ class NeuralNet:
             X is a n-by-d numpy array
             y is an n-dimensional numpy array
         """
+        X = matrix(X)
         self.classes = unique(y)
         self.theta1, self.thetas = init_thetas(
             self.epsilon, self.hidden_layers, self.hl_size,
@@ -179,6 +180,7 @@ class NeuralNet:
             if self.gradientChecking:
                 self.check_gradient(gradient, X, y)
             update_thetas(self.thetas, self.learningRate, gradient)
+            print ".",
 
     def predict(self, X):
         """

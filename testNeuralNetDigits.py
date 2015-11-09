@@ -11,7 +11,7 @@ if __name__ == "__main__":
     X = loadtxt(filename, delimiter=',', skiprows=skiprows)
     filename = 'data/digitsY.dat'
     y = loadtxt(filename, skiprows=skiprows)
-    X, y = (data[:10] for data in shuffle(X, y))
+    X, y = (data[:1000] for data in shuffle(X, y))
     n = len(y)
     kf = KFold(n, n_folds=2)
 
@@ -19,7 +19,7 @@ if __name__ == "__main__":
     for train_index, test_index in kf:
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = y[train_index], y[test_index]
-        nn = NeuralNet(1, numEpochs=1, gradientChecking=True)  #TODO modify params
+        nn = NeuralNet(1) #, gradientChecking=True)  #TODO modify params
         print "Training..."
         score = nn.score(X_train, y_train, X_test, y_test)
         scores.append(score)

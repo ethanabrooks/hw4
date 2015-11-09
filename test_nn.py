@@ -329,7 +329,7 @@ def test_get_grad_approx():
 def test_check_gradient():
     net = NeuralNet(1, gradientChecking=True, randTheta=False, hl_size=5)
     X = random.uniform(-2, 2, size=(2, 10))
-    y = random.uniform(-2, 2, size=(1, 2))
+    y = random.uniform(-2, 2, size=(2))
     net.fit(X, y)
 
     net = NeuralNet(1, gradientChecking=True, randTheta=False, hl_size=1)
