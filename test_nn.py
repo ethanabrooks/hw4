@@ -69,7 +69,7 @@ def test_feed_forward():
     activations = masked_array([[1, 1, 2]])
     output = masked_array([0.9999991684719722, 0.9999999847700205])
     desired = activations, output
-    actual = feed_forward(input, thetas)
+    actual = feed_forward(input, self.theta1, thetas)
     for a, d in zip(actual, desired):
         assert_almost_equal(a, d)
 
@@ -77,7 +77,7 @@ def test_feed_forward():
         [1, 2, 3, 4, 5, 6],
         [11, 12, 13, 14, -15, -16]
     ])
-    actual = feed_forward(input, thetas)
+    actual = feed_forward(input, self.theta1, thetas)
     activations2 = masked_array([[1, 0.9999991684719722, 0.9999999847700205]])
     activations = masked_array(vstack([activations, activations2]))
     theta2 = masked_array([
@@ -96,9 +96,9 @@ def test_feed_forward_multiple_inputs():
     thetas = masked_array(random.uniform(-2, 2, size=(1, 6)))
     outputs = []
     for input in inputs:
-        outputs.append(feed_forward(input, thetas)[1])
+        outputs.append(feed_forward(input, self.theta1, thetas)[1])
     desired = vstack(outputs)
-    actual = feed_forward_multiple_inputs(inputs, thetas)
+    actual = feed_forward_multiple_inputs(inputs, self.theta1, thetas)
     assert_almost_equal(desired, actual)
 
 

@@ -8,11 +8,8 @@ from numpy.core.umath import square
 from numpy.ma import exp, true_divide, multiply, log, floor, sqrt
 from numpy import ma
 from numpy.testing import assert_almost_equal
+from scipy.special._ufuncs import expit
 from sklearn.metrics import accuracy_score
-
-
-def sigmoid(x):
-    return true_divide(1, (1 + exp(-x)))
 
 
 def get_width(m):
@@ -30,11 +27,11 @@ def feed_forward_once(inputs, theta):
     d1, d = theta.shape
     assert get_width(inputs) == d1
     dot_product = ma.dot(inputs, theta, strict=True)
-    return sigmoid(dot_product)
+    return expit(dot_product)
 
 
-def init_thetas(epsilon, layers, d, num_classes, rand=True):
-    size = layers, (d + 1) * d
+def init_thetas(epsilon, hidden_layers, d, num_classes, rand=True):
+    size = hidden_layers, (d + 1) * d
     if rand:
         thetas_unmasked = random.uniform(-epsilon, epsilon, size=size)
     else:
@@ -44,7 +41,7 @@ def init_thetas(epsilon, layers, d, num_classes, rand=True):
     return ma.array(data=thetas_unmasked, mask=mask, fill_value=0)
 
 
-def feed_forward(input, thetas, K=None):
+def feed_forward(input, theta1, thetas, K=None):
     activations = ma.ones([thetas.shape[0], get_width(input) + 1])
     # L (including output layer), d+1 (for bias nodes)
     d = None
@@ -60,8 +57,9 @@ def feed_forward(input, thetas, K=None):
     return activations, input  # = output
 
 
-def feed_forward_multiple_inputs(inputs, thetas, K=None):
+def feed_forward_multiple_inputs(inputs, theta1, thetas, K=None):
     """
+    :param theta1:
     :param inputs: matrix [[ n x d ]]
     :param thetas: matrix [[ num_layers x d(d+1) ]]
     :return: matrix [[ n x d ]]
@@ -75,9 +73,7 @@ def feed_forward_multiple_inputs(inputs, thetas, K=None):
         if l + 1 == thetas.shape[0]:
             d = K  # on the final layer, we shorten the width of theta
         theta_ = reshape(theta, d)
-        theta_compare = reshape(theta)
         inputs = feed_forward_once(activations, theta_)
-        input_compare = feed_forward_once(activations[l, :], theta_compare)
     return inputs  # = outputs
 
 
@@ -109,14 +105,14 @@ class NeuralNet:
         self.numEpochs = numEpochs
         self.gradientChecking = gradientChecking
         self.randTheta = randTheta
+        self.hidden_layers_size = 25
         self.reg_factor = .0001
 
     def get_gradients(self, X, y):
         gradients = ma.zeros(self.thetas.shape)
         gradients.mask = self.thetas.mask
         for i, instance in enumerate(X):
-            activations, output = feed_forward(instance,
-                                               self.thetas)
+            activations, output = feed_forward(instance, self.theta1, self.thetas)
                                                # self.classes.size)
             g_prime = get_g_prime(activations)
             error = get_error(output, self.classes, y[i])
@@ -138,9 +134,7 @@ class NeuralNet:
         def cost(i, j):
             perturbed_thetas = thetas.copy()
             perturbed_thetas[i, j] += c
-            predictions = feed_forward_multiple_inputs(X,
-                                                       perturbed_thetas)
-                                                       # self.classes.size)
+            predictions = feed_forward_multiple_inputs(X, self.theta1, perturbed_thetas)
             return get_cost(
                 X, y_bin, predictions[:, :self.classes.size], reg_factor, perturbed_thetas
             )
@@ -167,7 +161,7 @@ class NeuralNet:
         self.classes = unique(y)
         self.thetas = init_thetas(self.epsilon,
                                   self.layers,
-                                  X.shape[1],
+                                  self.hidden_layers_size,
                                   self.classes.size,
                                   rand=self.randTheta)
         for _ in range(self.numEpochs):
@@ -185,7 +179,7 @@ class NeuralNet:
         Returns:
             an n-dimensional numpy array of the predictions
         """
-        return feed_forward_multiple_inputs(X, self.thetas)
+        return feed_forward_multiple_inputs(X, self.theta1, self.thetas)
 
     def score(self, X_train, y_train, X_test, y_test):
         self.fit(X_train, y_train)
