@@ -1,20 +1,17 @@
 from numpy import loadtxt, mean
-from sklearn.cross_validation import train_test_split, cross_val_score, KFold
+from sklearn.cross_validation import KFold
 from sklearn.utils import shuffle
 
 from nn import NeuralNet
 
 if __name__ == "__main__":
-    # Load Data
-    print "loading data..."
-    skiprows = 4000
+    print "Loading data..."
+    skiprows = 0
     filename = 'data/digitsX.dat'
     X = loadtxt(filename, delimiter=',', skiprows=skiprows)
     filename = 'data/digitsY.dat'
     y = loadtxt(filename, skiprows=skiprows)
-    print "shuffling..."
-    X, y = (data[:20] for data in shuffle(X, y))
-    print "done loading data."
+    X, y = (data[:10] for data in shuffle(X, y))
     n = len(y)
     kf = KFold(n, n_folds=2)
 
@@ -22,7 +19,8 @@ if __name__ == "__main__":
     for train_index, test_index in kf:
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = y[train_index], y[test_index]
-        nn = NeuralNet(1, gradientChecking=True)
+        nn = NeuralNet(1, numEpochs=1, gradientChecking=True)  #TODO modify params
+        print "Training..."
         score = nn.score(X_train, y_train, X_test, y_test)
         scores.append(score)
         print "Score: {0}".format(score)
